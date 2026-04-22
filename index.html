@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Project 8 — 1 Donor = 8 Lives</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html, body {
+    width: 100%; height: 100%;
+    background: #000;
+    overflow: hidden;
+    font-family: serif;
+    touch-action: manipulation;
+  }
+
+  #stage {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+  }
+
+  /* Slide wrapper — maintains 9:16 aspect ratio */
+  #frame {
+    position: relative;
+    height: 100vh;
+    width: calc(100vh * 9 / 16);
+    max-width: 100vw;
+    max-height: calc(100vw * 16 / 9);
+    overflow: hidden;
+  }
+
+  /* Each slide */
+  .slide {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    pointer-events: none;
+    will-change: opacity;
+  }
+
+  .slide img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+
+  /* Animated text overlay — typewriter effect */
+  .typewriter-overlay {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+  }
+
+  /* ── TRANSITIONS ── */
+
+  /* Default: simple crossfade */
+  .slide.active {
+    opacity: 1;
+  }
+
+  /* Fade-in (clarify / прояснение) */
+  .slide.anim-fade.entering {
+    animation: fadeIn 1.2s ease forwards;
+  }
+
+  /* Slide from right */
+  .slide.anim-slide-right.entering {
+    animation: slideFromRight 0.7s cubic-bezier(0.25,0.46,0.45,0.94) forwards;
+  }
+
+  /* Slide from bottom */
+  .slide.anim-slide-up.entering {
+    animation: slideFromBottom 0.7s cubic-bezier(0.25,0.46,0.45,0.94) forwards;
+  }
+
+  /* Typewriter text reveal */
+  .slide.anim-type .text-layer {
+    animation: fadeIn 0.3s ease forwards;
+  }
+  .slide.anim-type .text-layer span {
+    opacity: 0;
+    animation: revealChar 0.03s ease forwards;
+  }
+
+  /* Pulse */
+  .slide.anim-pulse.entering {
+    animation: pulseIn 0.8s ease forwards;
+  }
+
+  /* Digital / glitch */
+  .slide.anim-digital.entering {
+    animation: digitalIn 0.6s steps(8) forwards;
+  }
+
+  /* Old TV */
+  .slide.anim-oldtv.entering {
+    animation: oldTvIn 0.8s ease forwards;
+  }
+
+  /* Merge / объединение */
+  .slide.anim-merge.entering {
+    animation: mergeIn 1s ease forwards;
+  }
+
+  /* Blur / размытие */
+  .slide.anim-blur.entering {
+    animation: blurIn 1s ease forwards;
+  }
+
+  /* ── KEYFRAMES ── */
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+  }
+  @keyframes slideFromRight {
+    from { opacity: 0; transform: translateX(40px); }
+    to   { opacity: 1; transform: translateX(0); }
+  }
+  @keyframes slideFromBottom {
+    from { opacity: 0; transform: translateY(40px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes pulseIn {
+    0%   { opacity: 0; transform: scale(0.92); }
+    60%  { opacity: 1; transform: scale(1.03); }
+    100% { opacity: 1; transform: scale(1); }
+  }
+  @keyframes digitalIn {
+    0%   { opacity: 0; clip-path: inset(100% 0 0 0); }
+    50%  { opacity: 0.5; clip-path: inset(50% 0 0 0); }
+    100% { opacity: 1; clip-path: inset(0% 0 0 0); }
+  }
+  @keyframes oldTvIn {
+    0%   { opacity: 0; transform: scaleY(0.02) scaleX(1.1); filter: brightness(3); }
+    40%  { opacity: 1; transform: scaleY(1.02) scaleX(1); filter: brightness(1.2); }
+    100% { opacity: 1; transform: scale(1); filter: brightness(1); }
+  }
+  @keyframes mergeIn {
+    0%   { opacity: 0; transform: scale(1.08); filter: blur(8px); }
+    100% { opacity: 1; transform: scale(1); filter: blur(0); }
+  }
+  @keyframes blurIn {
+    0%   { opacity: 0; filter: blur(20px); }
+    100% { opacity: 1; filter: blur(0); }
+  }
+
+  /* ── TYPEWRITER TEXT LAYERS ── */
+  .text-layer {
+    position: absolute;
+    color: white;
+    font-family: 'Courier New', monospace;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    opacity: 0;
+  }
+
+  /* ── STAR PULSE (slide 7) ── */
+  @keyframes starBounce {
+    0%, 100% { transform: translateY(0) scale(1); }
+    50%       { transform: translateY(-8px) scale(1.1); }
+  }
+  .bouncing-star {
+    animation: starBounce 1.8s ease-in-out infinite;
+  }
+
+  /* ── PROGRESS DOTS ── */
+  #progress {
+    position: fixed;
+    bottom: 18px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 5px;
+    z-index: 100;
+    opacity: 0.5;
+  }
+  .dot {
+    width: 5px; height: 5px;
+    border-radius: 50%;
+    background: #fff;
+    transition: all 0.3s;
+  }
+  .dot.active { background: #ff69b4; transform: scale(1.4); opacity: 1; }
+
+  /* ── CLICK HINT ── */
+  #hint {
+    position: fixed;
+    bottom: 44px;
+    left: 50%;
+    transform: translateX(-50%);
+    color: rgba(255,255,255,0.4);
+    font-size: 11px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    z-index: 100;
+    transition: opacity 0.5s;
+    font-family: 'Courier New', monospace;
+  }
+  #hint.hidden { opacity: 0; }
+
+  /* ── STAR RISE ANIMATION (slides 16, 27, 29, 34) ── */
+  @keyframes starRise {
+    0%   { opacity: 0; transform: translateY(30px) scale(0.5); }
+    60%  { opacity: 1; transform: translateY(-5px) scale(1.15); }
+    100% { opacity: 1; transform: translateY(0) scale(1); }
+  }
+  .star-rise {
+    animation: starRise 1s 0.4s ease both;
+  }
+
+</style>
+</head>
+<body>
+
+<div id="stage">
+  <div id="frame" id="frame">
+
+    <!-- All 36 slides -->
+    <!-- Slides 1-4: simple crossfade -->
+    <div class="slide anim-fade" id="s1"><img src="slides/1.png" alt=""></div>
+    <div class="slide anim-fade" id="s2"><img src="slides/2.png" alt=""></div>
+    <div class="slide anim-fade" id="s3"><img src="slides/3.png" alt=""></div>
+    <div class="slide anim-fade" id="s4"><img src="slides/4.png" alt=""></div>
+
+    <!-- Slide 5: Project 8 title — fade in -->
+    <div class="slide anim-fade" id="s5"><img src="slides/5.png" alt=""></div>
+
+    <!-- Slide 6: One donor / Eight lives — pulse -->
+    <div class="slide anim-pulse" id="s6"><img src="slides/6.png" alt=""></div>
+
+    <!-- Slide 7: Stars guide your journey — fade -->
+    <div class="slide anim-fade" id="s7"><img src="slides/7.png" alt=""></div>
+
+    <!-- Slide 8: Star flies — fade -->
+    <div class="slide anim-fade" id="s8"><img src="slides/8.png" alt=""></div>
+
+    <!-- Slide 9 — fade + type feel -->
+    <div class="slide anim-fade" id="s9"><img src="slides/9.png" alt=""></div>
+
+    <!-- Slides 10-15: organs — slide from right -->
+    <div class="slide anim-slide-right" id="s10"><img src="slides/10.png" alt=""></div>
+    <div class="slide anim-slide-right" id="s11"><img src="slides/11.png" alt=""></div>
+    <div class="slide anim-slide-right" id="s12"><img src="slides/12.png" alt=""></div>
+    <div class="slide anim-slide-right" id="s13"><img src="slides/13.png" alt=""></div>
+    <div class="slide anim-slide-right" id="s14"><img src="slides/14.png" alt=""></div>
+    <div class="slide anim-slide-right" id="s15"><img src="slides/15.png" alt=""></div>
+
+    <!-- Slide 16: star rises — merge -->
+    <div class="slide anim-merge" id="s16"><img src="slides/16.png" alt=""></div>
+
+    <!-- Slides 17-26: myths — simple fade -->
+    <div class="slide anim-fade" id="s17"><img src="slides/17.png" alt=""></div>
+    <div class="slide anim-fade" id="s18"><img src="slides/18.png" alt=""></div>
+    <div class="slide anim-fade" id="s19"><img src="slides/19.png" alt=""></div>
+    <div class="slide anim-fade" id="s20"><img src="slides/20.png" alt=""></div>
+    <div class="slide anim-fade" id="s21"><img src="slides/21.png" alt=""></div>
+    <div class="slide anim-fade" id="s22"><img src="slides/22.png" alt=""></div>
+    <div class="slide anim-fade" id="s23"><img src="slides/23.png" alt=""></div>
+    <div class="slide anim-fade" id="s24"><img src="slides/24.png" alt=""></div>
+    <div class="slide anim-fade" id="s25"><img src="slides/25.png" alt=""></div>
+    <div class="slide anim-fade" id="s26"><img src="slides/26.png" alt=""></div>
+
+    <!-- Slide 27: star rises — merge -->
+    <div class="slide anim-merge" id="s27"><img src="slides/27.png" alt=""></div>
+
+    <!-- Slide 28: register — blur in -->
+    <div class="slide anim-blur" id="s28"><img src="slides/28.png" alt=""></div>
+
+    <!-- Slide 29: star rises — merge -->
+    <div class="slide anim-merge" id="s29"><img src="slides/29.png" alt=""></div>
+
+    <!-- Slide 30: old TV — infinity -->
+    <div class="slide anim-oldtv" id="s30"><img src="slides/30.png" alt=""></div>
+
+    <!-- Slide 31: digital -->
+    <div class="slide anim-digital" id="s31"><img src="slides/31.png" alt=""></div>
+
+    <!-- Slide 32: merge -->
+    <div class="slide anim-merge" id="s32"><img src="slides/32.png" alt=""></div>
+
+    <!-- Slide 33: digital -->
+    <div class="slide anim-digital" id="s33"><img src="slides/33.png" alt=""></div>
+
+    <!-- Slide 34: star + merge -->
+    <div class="slide anim-merge" id="s34"><img src="slides/34.png" alt=""></div>
+
+    <!-- Slide 35: fade -->
+    <div class="slide anim-fade" id="s35"><img src="slides/35.png" alt=""></div>
+
+    <!-- Slide 36: final — old TV -->
+    <div class="slide anim-oldtv" id="s36"><img src="slides/36.png" alt=""></div>
+
+  </div>
+</div>
+
+<!-- Progress -->
+<div id="progress"></div>
+<div id="hint">tap anywhere to continue</div>
+
+<script>
+  const TOTAL = 36;
+  let current = 1;
+  let animating = false;
+
+  const slides = {};
+  for (let i = 1; i <= TOTAL; i++) {
+    slides[i] = document.getElementById('s' + i);
+  }
+
+  const progressEl = document.getElementById('progress');
+  const hintEl = document.getElementById('hint');
+
+  // Build progress dots (one per "chapter": 1,5,8,16,27,29,31,36)
+  const chapters = [1,5,8,16,27,29,31,36];
+  chapters.forEach((n, i) => {
+    const d = document.createElement('div');
+    d.className = 'dot';
+    d.dataset.chapter = n;
+    progressEl.appendChild(d);
+  });
+
+  function updateProgress() {
+    const dots = progressEl.querySelectorAll('.dot');
+    dots.forEach(d => {
+      const ch = parseInt(d.dataset.chapter);
+      const nextCh = chapters[chapters.indexOf(ch) + 1] || TOTAL + 1;
+      d.classList.toggle('active', current >= ch && current < nextCh);
+    });
+  }
+
+  function showSlide(n) {
+    if (animating) return;
+    animating = true;
+
+    const prev = slides[current];
+    const next = slides[n];
+
+    // Hide previous
+    if (prev) {
+      prev.classList.remove('active', 'entering');
+      prev.style.opacity = '';
+    }
+
+    // Show next with its entering animation
+    next.style.opacity = '';
+    next.classList.add('active', 'entering');
+
+    current = n;
+    updateProgress();
+
+    // After animation completes, unlock
+    const dur = getAnimDuration(next);
+    setTimeout(() => {
+      next.classList.remove('entering');
+      animating = false;
+    }, dur);
+
+    // Hide hint after slide 3
+    if (current > 3) hintEl.classList.add('hidden');
+  }
+
+  function getAnimDuration(el) {
+    if (el.classList.contains('anim-oldtv')) return 900;
+    if (el.classList.contains('anim-merge')) return 1100;
+    if (el.classList.contains('anim-blur')) return 1100;
+    if (el.classList.contains('anim-pulse')) return 900;
+    if (el.classList.contains('anim-digital')) return 700;
+    if (el.classList.contains('anim-slide-right')) return 800;
+    return 700; // fade default
+  }
+
+  function advance() {
+    if (animating) return;
+    if (current < TOTAL) {
+      showSlide(current + 1);
+    }
+    // On last slide, a second tap does nothing (or could restart)
+  }
+
+  // Init first slide
+  slides[1].classList.add('active');
+  updateProgress();
+
+  // Click / tap
+  document.getElementById('stage').addEventListener('click', advance);
+  document.addEventListener('keydown', e => {
+    if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'Enter') advance();
+    if (e.key === 'ArrowLeft' && current > 1 && !animating) showSlide(current - 1);
+  });
+
+  // Preload all images
+  for (let i = 1; i <= TOTAL; i++) {
+    const img = new Image();
+    img.src = `slides/${i}.png`;
+  }
+</script>
+</body>
+</html>
